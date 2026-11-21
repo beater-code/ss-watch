@@ -1,25 +1,37 @@
 name: ss-check
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
-concurrency: ss-check
+concurrency:
+  group: ss-check
+  cancel-in-progress: false
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install requests beautifulsoup4
-      - run: python check.py
+      - name: Check every 5 minutes
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-      - run: |
+        run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add seen.json
-          git diff --cached --quiet || (git commit -m "update seen" && git push)
+          end=$((SECONDS + 340 * 60))
+          while [ $SECONDS -lt $end ]; do
+            date -u
+            python check.py || echo "check failed"
+            git add seen.json
+            if ! git diff --cached --quiet; then
+              git commit -q -m "update seen"
+              git pull -q --rebase && git push -q || echo "push failed"
+            fi
+            sleep 300
+          done

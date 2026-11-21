@@ -28,32 +28,20 @@ def ad_links():
     return links
 
 
-def ad_fields(html):
-    soup = BeautifulSoup(html, "html.parser")
-    fields = {}
-    for td in soup.find_all("td"):
-        label = td.get_text(" ", strip=True)
-        if label.endswith(":") and len(label) < 40:
-            val = td.find_next_sibling("td")
-            if val:
-                fields.setdefault(label.rstrip(":").strip().lower(), val.get_text(" ", strip=True))
-    title = soup.title.get_text(strip=True).replace("SS.COM ", "") if soup.title else ""
-    return fields, title
+def details(html):
+    text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
 
+    def last(pattern):
+        found = re.findall(pattern, text)
+        return found[-1].strip() if found else ""
 
-def field(fields, prefix):
-    return " ".join(v for k, v in fields.items() if k.startswith(prefix))
-
-
-def details(fields):
-    year = re.search(r"\d{4}", field(fields, "izlaiduma gads"))
-    price = re.search(r"\d[\d\s]*€", field(fields, "cena"))
+    year = last(r"Izlaiduma gads:\s*(\d{4})")
     return {
-        "year": int(year.group()) if year else None,
-        "engine": field(fields, "dzinēj"),
-        "gearbox": field(fields, "ātrumkārba"),
-        "mileage": field(fields, "nobraukums"),
-        "price": price.group() if price else "",
+        "year": int(year) if year else None,
+        "engine": last(r"Motors:\s*(.*?)\s+(?:Ātrumkārba|Nobraukums|Krāsa|Virsbūves)"),
+        "gearbox": last(r"Ātrumkārba:\s*(.*?)\s+(?:Nobraukums|Krāsa|Virsbūves)"),
+        "mileage": last(r"Nobraukums, km:\s*([\d\s]*\d)"),
+        "price": last(r"Cena:\s*(\d[\d\s]*€)"),
     }
 
 
@@ -83,7 +71,8 @@ def main():
         if not first_run:
             url = BASE + href
             try:
-                d = details(ad_fields(get(url))[0])
+                d = details(get(url))
+                print(url, d)
             except Exception as e:
                 print(f"skip {url}: {e}")
                 continue

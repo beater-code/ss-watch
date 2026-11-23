@@ -27,11 +27,12 @@ jobs:
           end=$((SECONDS + 340 * 60))
           while [ $SECONDS -lt $end ]; do
             date -u
+            git fetch -q origin main && git reset -q --hard origin/main || echo "sync failed"
             python check.py || echo "check failed"
             git add seen.json
             if ! git diff --cached --quiet; then
               git commit -q -m "update seen"
-              git pull -q --rebase && git push -q || echo "push failed"
+              git push -q origin HEAD:main || echo "push failed"
             fi
             sleep 300
           done

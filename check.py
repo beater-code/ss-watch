@@ -77,11 +77,15 @@ def main():
                 print(f"skip {url}: {e}")
                 continue
             if matches(d):
-                notify(
-                    f"BMW 3 · {d['year']} · {d['price']}",
-                    f"{d['engine']} · {d['gearbox']} · {d['mileage']} km",
-                    url,
-                )
+                try:
+                    notify(
+                        f"BMW 3 · {d['year']} · {d['price']}",
+                        f"{d['engine']} · {d['gearbox']} · {d['mileage']} km",
+                        url,
+                    )
+                except Exception as e:
+                    print(f"notify failed {url}: {e}")
+                    continue
                 print(f"match {url}")
             time.sleep(2)
         seen.append(href)
